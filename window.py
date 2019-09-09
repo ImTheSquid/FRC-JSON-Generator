@@ -138,7 +138,7 @@ class MainWin(QWidget):
 
     def init_gui(self, layout):
         # Init the basic window frame
-        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.1')
+        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.2')
         self.setWindowIcon(QIcon('icon.png'))
         self.setLayout(layout)
         self.show()
@@ -155,6 +155,7 @@ class MainWin(QWidget):
         model = self.profileList.selectionModel()
         if len(model.selectedRows()) == 0:
             info = QMessageBox()
+            info.setWindowIcon(QIcon('icon.png'))
             info.setIcon(QMessageBox.Information)
             info.setWindowTitle('Entry Remover')
             info.setText('Please select a whole row.')
@@ -175,6 +176,7 @@ class MainWin(QWidget):
     @pyqtSlot()
     def remove_profile(self):
         confirm = QMessageBox()
+        confirm.setWindowIcon(QIcon('icon.png'))
         confirm.setWindowTitle('Profile Handler')
         confirm.setText('Are you sure you want to delete "' + self.profiles.currentText() + '"?')
         confirm.setInformativeText('You cannot undo this action!')
@@ -302,6 +304,7 @@ class MainWin(QWidget):
             json.dump(jsonExport, out, ensure_ascii=False, indent=4)
 
         msg = QMessageBox()
+        msg.setWindowIcon(QIcon('icon.png'))
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle('File Writer')
         msg.setText('JSON file created successfully.')
@@ -309,6 +312,7 @@ class MainWin(QWidget):
 
     def import_json(self):
         confirmation = QMessageBox()
+        confirmation.setWindowIcon(QIcon('icon.png'))
         confirmation.setIcon(QMessageBox.Question)
         confirmation.setWindowTitle('File Information')
         confirmation.setText('Are you sure you want to import?')
@@ -334,6 +338,7 @@ class MainWin(QWidget):
                 jsonIn = json.load(f)
         except FileNotFoundError:
             info = QMessageBox()
+            info.setWindowIcon(QIcon('icon.png'))
             info.setWindowTitle('File Loader')
             info.setText('No file named "dataIn.json" found.')
             info.setIcon(QMessageBox.Critical)
