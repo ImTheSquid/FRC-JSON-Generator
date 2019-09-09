@@ -2,10 +2,25 @@ import json
 
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QPushButton, QLineEdit, QComboBox, QGroupBox, \
-    QVBoxLayout, QWidget, QLabel, QHBoxLayout, QSpinBox, QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox
+    QVBoxLayout, QWidget, QLabel, QHBoxLayout, QSpinBox, QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, \
+    QCheckBox
 
 
 # noinspection PyArgumentList
+def find_profile_index(pilot, text_key):
+    for index, key in enumerate(pilot.keys()):
+        if key == text_key:
+            return index
+    return -1
+
+
+def add_dict_bulk(dictionary, index, src):
+    for val in src.keys():
+        if index == len(dictionary):
+            dictionary[index].append({})
+        dictionary[index].update({src.get(val)[0]: src.get(val)[1]})
+
+
 class MainWin(QWidget):
 
     # Comments will probably be added later
@@ -13,7 +28,7 @@ class MainWin(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Data storage
+        # Data storagecurl https://bootstrap.pypa.io/get-pip.py | python
         self.driverMap = {}
         self.gunnerMap = {}
         self.dProfileMapXbox = [{}]
@@ -58,10 +73,14 @@ class MainWin(QWidget):
         vertLeft.addLayout(keyConfig)
         vertLeft.addStretch()
 
+        importJSON = QPushButton()
+        importJSON.setText('Import JSON')
+        importJSON.clicked.connect(self.import_json)
         submit = QPushButton()
         submit.setText('Add Entry to List')
         submit.clicked.connect(self.process_data)
         vertLeft.addWidget(submit)
+        vertLeft.addWidget(importJSON)
 
         leftHalf.setLayout(vertLeft)
         mainLayout.addWidget(leftHalf)
@@ -95,11 +114,15 @@ class MainWin(QWidget):
         self.removeItem.setDisabled(True)
         self.removeItem.clicked.connect(self.remove_list_item)
         listControls.addWidget(self.removeItem)
+        self.removeProfile = QPushButton('Remove Profile')
+        self.removeProfile.setDisabled(True)
+
+        listControls.addWidget(self.removeProfile)
         self.export = QPushButton("Export to JSON")
         self.export.clicked.connect(self.export_json)
-        self.export.setDisabled(True)
-        listControls.addWidget(self.export)
+        self.export.setEnabled(True)
         rightVert.addLayout(listControls)
+        rightVert.addWidget(self.export)
 
         rightHalf.setLayout(rightVert)
         mainLayout.addWidget(rightHalf)
@@ -142,28 +165,25 @@ class MainWin(QWidget):
             return
         self.export.setDisabled(False)
         self.removeItem.setDisabled(False)
+        self.removeProfile.setDisabled(False)
         pilot = (self.driverMap if self.pilot.currentText() == 'Driver' else self.gunnerMap)
-        profileIndex = self.set_profile(pilot)
+        profileIndex = self.set_profile(pilot, self.profileName.text())
         self.update_dictionary(profileIndex)
         self.pilotSource.setCurrentText('Driver' if self.pilot.currentText() == 'Driver' else 'Gunner')
-        self.controllerSource.setCurrentText('Xbox Compatible' if self.controller.currentText() == 'Xbox Compatible' else 'Joystick')
-        self.profiles.setCurrentText(self.get_profile_names('driver' if self.pilotSource.currentText() == 'Driver' else 'gunner')[profileIndex])
+        self.controllerSource.setCurrentText(
+            'Xbox Compatible' if self.controller.currentText() == 'Xbox Compatible' else 'Joystick')
+        self.profiles.setCurrentText(
+            self.get_profile_names('driver' if self.pilotSource.currentText() == 'Driver' else 'gunner')[profileIndex])
         self.update_list()
         self.key.setText('')
 
-    def set_profile(self, pilot):
-        profileIndex = self.find_profile_index(pilot)
+    def set_profile(self, pilot, text_key):
+        profileIndex = find_profile_index(pilot, text_key)
         if profileIndex == -1:
-            pilot[self.profileName.text()] = len(pilot)
-            profileIndex = len(pilot)-1
+            pilot[text_key] = len(pilot)
+            profileIndex = len(pilot) - 1
         self.update_profiles()
         return profileIndex
-
-    def find_profile_index(self, pilot):
-        for index, key in enumerate(pilot.keys()):
-            if key == self.profileName.text():
-                return index
-        return -1
 
     def get_profile_names(self, assignment):
         pilots = []
@@ -189,6 +209,7 @@ class MainWin(QWidget):
 
     def update_list(self):
         self.reset_table()
+        self.update_buttons()
         if len(self.profiles) == 0:
             self.profileList.removeRow(0)
             return
@@ -200,8 +221,8 @@ class MainWin(QWidget):
         if indexA == -1:
             return
         dictionary = self.get_profile_map(self.controllerSource, self.pilotSource.currentText())[indexA]
-        if len(dictionary.keys())-self.profileList.rowCount() > 0:
-            for x in range(len(dictionary.keys())-self.profileList.rowCount()):
+        if len(dictionary.keys()) - self.profileList.rowCount() > 0:
+            for x in range(len(dictionary.keys()) - self.profileList.rowCount()):
                 self.profileList.insertRow(0)
         for index, key in enumerate(dictionary.keys()):
             self.profileList.setItem(index, 0, QTableWidgetItem(key))
@@ -222,18 +243,22 @@ class MainWin(QWidget):
             workingDict = jsonExport.get('driver')
             workingDict[key] = {'xbox': {}, 'joystick': {}}
             for x, val in enumerate(self.dProfileMapXbox[self.driverMap.get(key)].keys()):
-                workingDict[key].get('xbox')['map'+str(x)] = [val, self.dProfileMapXbox[self.driverMap.get(key)].get(val)]
+                workingDict[key].get('xbox')['map' + str(x)] = [val,
+                                                                self.dProfileMapXbox[self.driverMap.get(key)].get(val)]
             for x, val in enumerate(self.dProfileMapJoystick[self.driverMap.get(key)].keys()):
-                workingDict[key].get('joystick')['map'+str(x)] = [val, self.dProfileMapJoystick[self.driverMap.get(key)].get(val)]
+                workingDict[key].get('joystick')['map' + str(x)] = [val, self.dProfileMapJoystick[
+                    self.driverMap.get(key)].get(val)]
 
         for key in self.gunnerMap.keys():
             workingDict = jsonExport.get('gunner')
             workingDict[key] = {'xbox': {}, 'joystick': {}}
             for x, val in enumerate(self.gProfileMapXbox[self.gunnerMap.get(key)].keys()):
-                workingDict[key].get('xbox')['map' + str(x)] = [val, self.gProfileMapXbox[self.gunnerMap.get(key)].get(val)]
+                workingDict[key].get('xbox')['map' + str(x)] = [val,
+                                                                self.gProfileMapXbox[self.gunnerMap.get(key)].get(val)]
             for x, val in enumerate(self.gProfileMapJoystick[self.gunnerMap.get(key)].keys()):
-                workingDict[key].get('joystick')['map' + str(x)] = [val, self.gProfileMapJoystick[self.gunnerMap.get(key)].get(val)]
-        with open('data.json', 'w') as out:
+                workingDict[key].get('joystick')['map' + str(x)] = [val, self.gProfileMapJoystick[
+                    self.gunnerMap.get(key)].get(val)]
+        with open('dataOut.json', 'w') as out:
             json.dump(jsonExport, out, ensure_ascii=False, indent=4)
 
         msg = QMessageBox()
@@ -241,3 +266,56 @@ class MainWin(QWidget):
         msg.setWindowTitle("File Information")
         msg.setText("JSON file created successfully.")
         msg.exec()
+
+    def import_json(self):
+        confirmation = QMessageBox()
+        confirmation.setIcon(QMessageBox.Question)
+        confirmation.setWindowTitle('File Information')
+        confirmation.setText('Are you sure you want to import?')
+        check = QCheckBox()
+        check.setText('Overwrite current entries')
+        confirmation.setCheckBox(check)
+        confirmation.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        confirmation.setInformativeText('Make sure your file is named "dataIn.json"')
+        if confirmation.exec() == QMessageBox.Yes:
+            self.do_import(check.isChecked())
+
+    def do_import(self, overwrite):
+        if overwrite:
+            self.driverMap = {}
+            self.gunnerMap = {}
+            self.dProfileMapJoystick = [{}]
+            self.dProfileMapXbox = [{}]
+            self.gProfileMapJoystick = [{}]
+            self.gProfileMapXbox = [{}]
+        self.update_profiles()
+        with open('dataIn.json', 'r') as f:
+            jsonIn = json.load(f)
+        print(jsonIn)
+        driverData = jsonIn.get('driver')
+        for key in driverData.keys():
+            profileIndex = self.set_profile(self.driverMap, key)
+            print(driverData.get(key))
+            xboxDict = driverData.get(key).get('xbox')
+            add_dict_bulk(self.dProfileMapXbox, profileIndex, xboxDict)
+            joyDict = driverData.get(key).get('joystick')
+            add_dict_bulk(self.dProfileMapJoystick, profileIndex, joyDict)
+        gunnerData = jsonIn.get('gunner')
+        for key in gunnerData.keys():
+            profileIndex = self.set_profile(self.gunnerMap, key)
+            xboxDict = gunnerData.get(key).get('xbox')
+            add_dict_bulk(self.gProfileMapXbox, profileIndex, xboxDict)
+            joyDict = driverData.get(key).get('joystick')
+            add_dict_bulk(self.gProfileMapJoystick, profileIndex, joyDict)
+        self.update_profiles()
+
+    def update_buttons(self):
+        currentMap = self.driverMap if self.pilotSource.currentText() == 'Driver' else self.gunnerMap
+        index = find_profile_index(currentMap, self.profiles.currentText())
+        if index == -1:
+            self.removeItem.setEnabled(False)
+            self.removeProfile.setEnabled(False)
+        else:
+            self.removeProfile.setEnabled(True)
+            dicti = self.get_profile_map(self.controllerSource, self.pilotSource)
+            self.removeItem.setEnabled(len(dicti[index]) > 0)
