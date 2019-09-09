@@ -1,12 +1,12 @@
 import json
 
 from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QPushButton, QLineEdit, QComboBox, QGroupBox, \
     QVBoxLayout, QWidget, QLabel, QHBoxLayout, QSpinBox, QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, \
     QCheckBox
 
 
-# noinspection PyArgumentList
 def find_profile_index(pilot, text_key):
     for index, key in enumerate(pilot.keys()):
         if key == text_key:
@@ -21,6 +21,7 @@ def add_dict_bulk(dictionary, index, src):
         dictionary[index].update({src.get(val)[0]: src.get(val)[1]})
 
 
+# noinspection PyArgumentList
 class MainWin(QWidget):
 
     # Comments will probably be added later
@@ -46,6 +47,7 @@ class MainWin(QWidget):
         vertLeft.setSpacing(2)
         vertLeft.addWidget(QLabel('Profile Name'))
         self.profileName = QLineEdit()
+        self.profileName.textEdited.connect(self.update_submit)
 
         vertLeft.addWidget(self.profileName)
 
@@ -62,6 +64,7 @@ class MainWin(QWidget):
         keys = QVBoxLayout()
         keys.addWidget(QLabel('Key'))
         self.key = QLineEdit()
+        self.key.textEdited.connect(self.update_submit)
         keys.addWidget(self.key)
         ports = QVBoxLayout()
         ports.addWidget(QLabel('Port'))
@@ -74,12 +77,13 @@ class MainWin(QWidget):
         vertLeft.addStretch()
 
         importJSON = QPushButton()
-        importJSON.setText('Import JSON')
+        importJSON.setText('Import from JSON')
         importJSON.clicked.connect(self.import_json)
-        submit = QPushButton()
-        submit.setText('Add Entry to List')
-        submit.clicked.connect(self.process_data)
-        vertLeft.addWidget(submit)
+        self.submit = QPushButton()
+        self.submit.setText('Add Entry to List')
+        self.submit.clicked.connect(self.process_data)
+        self.submit.setEnabled(False)
+        vertLeft.addWidget(self.submit)
         vertLeft.addWidget(importJSON)
 
         leftHalf.setLayout(vertLeft)
@@ -91,6 +95,7 @@ class MainWin(QWidget):
         self.profiles = QComboBox()
         self.profiles.addItems(self.get_profile_names('driver'))
         self.profiles.currentTextChanged.connect(self.update_list)
+        self.profiles.setEnabled(False)
         listSelectors = QHBoxLayout()
         listSelectors.addWidget(self.profiles)
         self.pilotSource = QComboBox()
@@ -116,6 +121,7 @@ class MainWin(QWidget):
         listControls.addWidget(self.removeItem)
         self.removeProfile = QPushButton('Remove Profile')
         self.removeProfile.setDisabled(True)
+        self.removeProfile.clicked.connect(self.remove_profile)
 
         listControls.addWidget(self.removeProfile)
         self.export = QPushButton("Export to JSON")
@@ -131,8 +137,8 @@ class MainWin(QWidget):
 
     def init_gui(self, layout):
         # Init the basic window frame
-        self.setWindowTitle('JSON Controller Profile Configuration Tool v.1.0')
-
+        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.0')
+        self.setWindowIcon(QIcon('icon.png'))
         self.setLayout(layout)
         self.show()
 
@@ -140,17 +146,23 @@ class MainWin(QWidget):
         self.profiles.clear()
         self.profiles.addItems(
             self.get_profile_names('driver' if self.pilotSource.currentText() == 'Driver' else 'gunner'))
+        self.profiles.setEnabled(len(self.profiles) > 0)
         self.update_list()
 
     @pyqtSlot()
     def remove_list_item(self):
         model = self.profileList.selectionModel()
+        if len(model.selectedRows()) == 0:
+            info = QMessageBox()
+            info.setIcon(QMessageBox.Information)
+            info.setWindowTitle('Entry Remover')
+            info.setText('Please select a whole row.')
+            info.exec()
+            return
         for selection in model.selectedRows():
             self.remove_from_storage(selection)
             self.profileList.removeRow(selection.row())
-        if self.profileList.rowCount() == 0:
-            self.removeItem.setDisabled(True)
-            self.export.setDisabled(True)
+        self.update_buttons()
 
     def remove_from_storage(self, selection):
         dictionary = self.get_profile_map(self.controllerSource, self.pilotSource.currentText())
@@ -160,12 +172,31 @@ class MainWin(QWidget):
                 dictionary[pilot.get(key)].pop(self.profileList.item(selection.row(), 0).text())
 
     @pyqtSlot()
+    def remove_profile(self):
+        confirm = QMessageBox()
+        confirm.setWindowTitle('Profile Handler')
+        confirm.setText('Are you sure you want to delete "'+self.profiles.currentText()+'"?')
+        confirm.setInformativeText('You cannot undo this action!')
+        confirm.setIcon(QMessageBox.Question)
+        confirm.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        confirm.setDefaultButton(QMessageBox.No)
+        res = confirm.exec()
+        if res == QMessageBox.No:
+            return
+        pilot = self.driverMap if self.pilotSource.currentText() == 'Driver' else self.gunnerMap
+        mapIndex = find_profile_index(pilot, self.profiles.currentText())
+        diction = self.get_profile_map(self.controllerSource, self.pilotSource.currentText())
+        diction[mapIndex].clear()
+        pilot.pop(self.profiles.currentText())
+        self.update_profiles()
+
+    def update_submit(self):
+        self.submit.setEnabled(len(self.profileName.text()) > 0 and len(self.key.text()) > 0)
+
+    @pyqtSlot()
     def process_data(self):
         if self.profileName == '' or self.key.text() == '':
             return
-        self.export.setDisabled(False)
-        self.removeItem.setDisabled(False)
-        self.removeProfile.setDisabled(False)
         pilot = (self.driverMap if self.pilot.currentText() == 'Driver' else self.gunnerMap)
         profileIndex = self.set_profile(pilot, self.profileName.text())
         self.update_dictionary(profileIndex)
@@ -176,10 +207,18 @@ class MainWin(QWidget):
             self.get_profile_names('driver' if self.pilotSource.currentText() == 'Driver' else 'gunner')[profileIndex])
         self.update_list()
         self.key.setText('')
+        self.update_buttons()
+        self.update_submit()
 
     def set_profile(self, pilot, text_key):
         profileIndex = find_profile_index(pilot, text_key)
         if profileIndex == -1:
+            for x, val in enumerate(pilot.keys()):
+                if len(val) == 0:
+                    profileIndex = x
+                    pilot[text_key] = x
+                    self.update_profiles()
+                    return profileIndex
             pilot[text_key] = len(pilot)
             profileIndex = len(pilot) - 1
         self.update_profiles()
@@ -263,8 +302,8 @@ class MainWin(QWidget):
 
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setWindowTitle("File Information")
-        msg.setText("JSON file created successfully.")
+        msg.setWindowTitle('File Writer')
+        msg.setText('JSON file created successfully.')
         msg.exec()
 
     def import_json(self):
@@ -276,7 +315,7 @@ class MainWin(QWidget):
         check.setText('Overwrite current entries')
         confirmation.setCheckBox(check)
         confirmation.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        confirmation.setInformativeText('Make sure your file is named "dataIn.json"')
+        confirmation.setInformativeText('Make sure your file is named "dataIn.json" if you accept.')
         if confirmation.exec() == QMessageBox.Yes:
             self.do_import(check.isChecked())
 
@@ -289,8 +328,16 @@ class MainWin(QWidget):
             self.gProfileMapJoystick = [{}]
             self.gProfileMapXbox = [{}]
         self.update_profiles()
-        with open('dataIn.json', 'r') as f:
-            jsonIn = json.load(f)
+        try:
+            with open('dataIn.json', 'r') as f:
+                jsonIn = json.load(f)
+        except FileNotFoundError:
+            info = QMessageBox()
+            info.setWindowTitle('File Loader')
+            info.setText('No file named "dataIn.json" found.')
+            info.setIcon(QMessageBox.Critical)
+            info.exec()
+            return
         print(jsonIn)
         driverData = jsonIn.get('driver')
         for key in driverData.keys():
@@ -317,5 +364,5 @@ class MainWin(QWidget):
             self.removeProfile.setEnabled(False)
         else:
             self.removeProfile.setEnabled(True)
-            dicti = self.get_profile_map(self.controllerSource, self.pilotSource)
-            self.removeItem.setEnabled(len(dicti[index]) > 0)
+            dicti = self.get_profile_map(self.controllerSource, self.pilotSource.currentText())
+            self.removeItem.setEnabled(len(dicti[index].keys()) > 0)
