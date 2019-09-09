@@ -1,10 +1,11 @@
 import json
+import sys
 
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QPushButton, QLineEdit, QComboBox, QGroupBox, \
     QVBoxLayout, QWidget, QLabel, QHBoxLayout, QSpinBox, QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, \
-    QCheckBox
+    QCheckBox, QApplication
 
 
 def find_profile_index(pilot, text_key):
@@ -137,7 +138,7 @@ class MainWin(QWidget):
 
     def init_gui(self, layout):
         # Init the basic window frame
-        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.0')
+        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.1')
         self.setWindowIcon(QIcon('icon.png'))
         self.setLayout(layout)
         self.show()
@@ -175,7 +176,7 @@ class MainWin(QWidget):
     def remove_profile(self):
         confirm = QMessageBox()
         confirm.setWindowTitle('Profile Handler')
-        confirm.setText('Are you sure you want to delete "'+self.profiles.currentText()+'"?')
+        confirm.setText('Are you sure you want to delete "' + self.profiles.currentText() + '"?')
         confirm.setInformativeText('You cannot undo this action!')
         confirm.setIcon(QMessageBox.Question)
         confirm.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
@@ -366,3 +367,9 @@ class MainWin(QWidget):
             self.removeProfile.setEnabled(True)
             dicti = self.get_profile_map(self.controllerSource, self.pilotSource.currentText())
             self.removeItem.setEnabled(len(dicti[index].keys()) > 0)
+
+
+if __name__ == '__main__':
+    app = QApplication([])
+    win = MainWin()
+    sys.exit(app.exec_())
