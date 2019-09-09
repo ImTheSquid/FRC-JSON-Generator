@@ -138,7 +138,7 @@ class MainWin(QWidget):
 
     def init_gui(self, layout):
         # Init the basic window frame
-        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.2')
+        self.setWindowTitle('JSON Controller Profile Configuration Tool v.2.3')
         self.setWindowIcon(QIcon('icon.png'))
         self.setLayout(layout)
         self.show()
@@ -325,14 +325,6 @@ class MainWin(QWidget):
             self.do_import(check.isChecked())
 
     def do_import(self, overwrite):
-        if overwrite:
-            self.driverMap = {}
-            self.gunnerMap = {}
-            self.dProfileMapJoystick = [{}]
-            self.dProfileMapXbox = [{}]
-            self.gProfileMapJoystick = [{}]
-            self.gProfileMapXbox = [{}]
-        self.update_profiles()
         try:
             with open('dataIn.json', 'r') as f:
                 jsonIn = json.load(f)
@@ -344,11 +336,17 @@ class MainWin(QWidget):
             info.setIcon(QMessageBox.Critical)
             info.exec()
             return
-        print(jsonIn)
+        if overwrite:
+            self.driverMap = {}
+            self.gunnerMap = {}
+            self.dProfileMapJoystick = [{}]
+            self.dProfileMapXbox = [{}]
+            self.gProfileMapJoystick = [{}]
+            self.gProfileMapXbox = [{}]
+        self.update_profiles()
         driverData = jsonIn.get('driver')
         for key in driverData.keys():
             profileIndex = self.set_profile(self.driverMap, key)
-            print(driverData.get(key))
             xboxDict = driverData.get(key).get('xbox')
             add_dict_bulk(self.dProfileMapXbox, profileIndex, xboxDict)
             joyDict = driverData.get(key).get('joystick')
