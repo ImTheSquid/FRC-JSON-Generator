@@ -30,7 +30,7 @@ class MainWin(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Data storagecurl https://bootstrap.pypa.io/get-pip.py | python
+        # Data storage
         self.driverMap = {}
         self.gunnerMap = {}
         self.dProfileMapXbox = [{}]
