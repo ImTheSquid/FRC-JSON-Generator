@@ -249,6 +249,7 @@ class MainWin(QWidget):
         else:
             return self.gProfileMapXbox if menu.currentText() == 'Xbox Compatible' else self.gProfileMapJoystick
 
+    # Updates the list after an event
     def update_list(self):
         self.reset_table()
         self.update_buttons()
@@ -270,6 +271,7 @@ class MainWin(QWidget):
             self.profileList.setItem(index, 0, QTableWidgetItem(key))
             self.profileList.setItem(index, 1, QTableWidgetItem(dictionary[key]))
 
+    # Resets the table that holds key pairs
     def reset_table(self):
         self.profileList.setRowCount(0)
         self.profileList.setHorizontalHeaderLabels(['Key', 'Port'])
@@ -279,6 +281,7 @@ class MainWin(QWidget):
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
 
+    # Exports a configuration to a JSON file
     def export_json(self):
         jsonExport = {'driver': {}, 'gunner': {}}
         for key in self.driverMap.keys():
@@ -310,6 +313,7 @@ class MainWin(QWidget):
         msg.setText('JSON file created successfully.')
         msg.exec()
 
+    # Setup method for do_import
     def import_json(self):
         confirmation = QMessageBox()
         confirmation.setWindowIcon(QIcon('icon.png'))
@@ -324,6 +328,7 @@ class MainWin(QWidget):
         if confirmation.exec() == QMessageBox.Yes:
             self.do_import(check.isChecked())
 
+    # Imports a JSON profiles file (named dataIn.json)
     def do_import(self, overwrite):
         try:
             with open('dataIn.json', 'r') as f:
@@ -360,6 +365,7 @@ class MainWin(QWidget):
             add_dict_bulk(self.gProfileMapJoystick, profileIndex, joyDict)
         self.update_profiles()
 
+    # Updates buttons to prevent users from clicking buttons that shouldn't do anything
     def update_buttons(self):
         currentMap = self.driverMap if self.pilotSource.currentText() == 'Driver' else self.gunnerMap
         index = find_profile_index(currentMap, self.profiles.currentText())
